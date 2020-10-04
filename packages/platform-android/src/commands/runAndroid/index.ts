@@ -42,6 +42,7 @@ export interface Flags {
   tasks?: Array<string>;
   root: string;
   variant: string;
+  flavor: string;
   appFolder: string;
   appId: string;
   appIdSuffix: string;
@@ -174,12 +175,16 @@ function tryInstallAppOnDevice(
     // "app" is usually the default value for Android apps with only 1 app
     const {appName, sourceDir} = androidProject;
     const {appFolder} = args;
-    const variant = args.variant.toLowerCase();
-    const buildDirectory = `${sourceDir}/${appName}/build/outputs/apk/${variant}`;
+
+    const flavor = args.flavor.toLowerCase();
+    const buildDirectory = flavor ?
+          `${sourceDir}/${appName}/build/outputs/apk/${flavor}/${variant}`
+          : `${sourceDir}/${appName}/build/outputs/apk/${variant}`;
     const apkFile = getInstallApkName(
       appFolder || appName, // TODO: remove appFolder
       adbPath,
       variant,
+      flavor,
       device,
       buildDirectory,
     );
@@ -200,6 +205,7 @@ function getInstallApkName(
   appName: string,
   adbPath: string,
   variant: string,
+  flavor: string,
   device: string,
   buildDirectory: string,
 ) {
@@ -207,14 +213,18 @@ function getInstallApkName(
 
   // check if there is an apk file like app-armeabi-v7a-debug.apk
   for (const availableCPU of availableCPUs.concat('universal')) {
-    const apkName = `${appName}-${availableCPU}-${variant}.apk`;
+    const apkName = flavor ?
+          `${appName}-${availableCPU}-${flavor}-${variant}.apk`
+          : `${appName}-${availableCPU}-${variant}.apk`;
     if (fs.existsSync(`${buildDirectory}/${apkName}`)) {
       return apkName;
     }
   }
 
   // check if there is a default file like app-debug.apk
-  const apkName = `${appName}-${variant}.apk`;
+  const apkName = flavor ?
+        `${appName}-${flavor}-${variant}.apk`
+        : `${appName}-${variant}.apk`;
   if (fs.existsSync(`${buildDirectory}/${apkName}`)) {
     return apkName;
   }
@@ -327,6 +337,11 @@ export default {
       name: '--variant [string]',
       description: "Specify your app's build variant",
       default: 'debug',
+    },
+    {
+      name: '--flavor [string]',
+      description: "Specify your app's flavor",
+      default: ''
     },
     {
       name: '--appFolder [string]',
